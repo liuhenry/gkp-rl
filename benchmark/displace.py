@@ -75,7 +75,7 @@ def gen_displace(N):
     return displace
 
 
-def gen_displace_BCH(N):
+def gen_displace_BCH(N, precision=tf.complex64):
     """Returns a function to calculate displacements using tensorflow with the
     Baker-Campbell-Hausdorff formula (BCH).
 
@@ -98,11 +98,11 @@ def gen_displace_BCH(N):
     Returns:
         Callable[[int], Tensor([num, N, N], c64)]: Displacement function for dim N
     """
-    a = utils.destroy(N, dtype=tf.complex128)
-    a_dag = utils.create(N, dtype=tf.complex128)
+    a = utils.destroy(N, dtype=precision)
+    a_dag = utils.create(N, dtype=precision)
 
     # Convert raising/lowering to position/momentum
-    sqrt2 = tf.math.sqrt(tf.constant(2, dtype=tf.complex128))
+    sqrt2 = tf.math.sqrt(tf.constant(2, dtype=precision))
     q = (a_dag + a) / sqrt2
     p = (a_dag - a) * 1j / sqrt2
 
@@ -127,12 +127,12 @@ def gen_displace_BCH(N):
         """
         # Scale alpha and reshape from broadcast against the diagonals
         alphas = sqrt2 * tf.cast(
-            tf.reshape(alphas, [alphas.shape[0], 1]), dtype=tf.complex128
+            tf.reshape(alphas, [alphas.shape[0], 1]), dtype=precision
         )
 
         # Take real/imag of alphas for the commutator part of the expansion
-        re_a = tf.cast(tf.math.real(alphas), dtype=tf.complex128)
-        im_a = tf.cast(tf.math.imag(alphas), dtype=tf.complex128)
+        re_a = tf.cast(tf.math.real(alphas), dtype=precision)
+        im_a = tf.cast(tf.math.imag(alphas), dtype=precision)
 
         # Exponentiate diagonal matrices
         expm_q = tf.linalg.diag(tf.math.exp(1j * im_a * eig_q))
