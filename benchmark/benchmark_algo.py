@@ -15,8 +15,12 @@ import time
 import math
 import socket
 import argparse
+import io
+import pickle
 from collections import defaultdict
 from pathlib import Path
+from datetime import datetime
+from zipfile import ZipFile
 
 import numpy as np
 import tensorflow as tf
@@ -155,6 +159,29 @@ if __name__ == "__main__":
             )
 
     if mpi_master():
+        savepath = "."
+        filename = "benchmark_algo" + "-gpu" + str(len(gpus))
+        timestamp = datetime.now().isoformat(timespec="seconds").replace(":", "_")
+
+        with ZipFile(os.path.join(savepath, "%s.zip" % filename), "a") as z:
+            z.writestr(
+                os.path.join(filename, timestamp, "devices.txt"),
+                str(device_lib.list_local_devices()),
+            )
+            z.writestr(os.path.join(filename, timestamp, "args.txt"), str(vars(args)))
+
+            buf = io.BytesIO()
+            pickle.dump(times, buf)
+            z.writestr(os.path.join(filename, timestamp, "times.pkl"), buf.getvalue())
+            buf.close()
+
+            buf = io.BytesIO()
+            pickle.dump(loop_times, buf)
+            z.writestr(
+                os.path.join(filename, timestamp, "loop_times.pkl"), buf.getvalue()
+            )
+            buf.close()
+
         # Plot stuff
         fig, ax = plt.subplots(1, 1)
         ax.set_ylabel(r"Time Per $D(\alpha)$ (s)")
@@ -175,15 +202,33 @@ if __name__ == "__main__":
         output_dir.mkdir(parents=True, exist_ok=True)
 
         run = time.time()
-        plt.savefig(
-            output_dir.joinpath("benchmark-%s-%i.png" % (socket.gethostname(), run))
-        )
+        with ZipFile(os.path.join(savepath, "%s.zip" % filename), "a") as z:
+            buf = io.BytesIO()
+            plt.savefig(buf, format="png")
+            z.writestr(
+                os.path.join(
+                    filename,
+                    timestamp,
+                    "benchmark-%s-%i.png" % (socket.gethostname(), run),
+                ),
+                buf.getvalue(),
+            )
+            buf.close()
 
         ax.set_yscale("log")
         ax.set_xscale("log")
-        plt.savefig(
-            output_dir.joinpath("benchmark-%s-%i-log.png" % (socket.gethostname(), run))
-        )
+        with ZipFile(os.path.join(savepath, "%s.zip" % filename), "a") as z:
+            buf = io.BytesIO()
+            plt.savefig(buf, format="png")
+            z.writestr(
+                os.path.join(
+                    filename,
+                    timestamp,
+                    "benchmark-%s-%i-log.png" % (socket.gethostname(), run),
+                ),
+                buf.getvalue(),
+            )
+            buf.close()
         # Save stuff
         # dic = times
         # dic['hilbert_space_range'] = hilbert_space_range
